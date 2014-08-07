@@ -1005,7 +1005,14 @@ static Value *emit_intrinsic(intrinsic f, jl_value_t **args, size_t nargs,
     HANDLE(smod_int,2)
         return emit_smod(JL_INT(x), JL_INT(y), ctx);
 
-    HANDLE(neg_float,1) return builder.CreateFMul(ConstantFP::get(FT(t), -1.0), FP(x));
+    HANDLE(neg_float,1) {
+        Type *intt = JL_INTT(x->getType());
+        Value *intx = builder.CreateBitCast(FP(x), intt);
+        unsigned nb = ((IntegerType*)intt)->getBitWidth();
+        APInt signbit0(nb, 0); signbit0.setBit(nb-1);
+        return builder.CreateBitCast(builder.CreateXor(intx,
+            ConstantInt::get(intt, signbit0)), FT(x->getType()));
+    }
     HANDLE(add_float,2) return builder.CreateFAdd(FP(x), FP(y));
     HANDLE(sub_float,2) return builder.CreateFSub(FP(x), FP(y));
     HANDLE(mul_float,2) return builder.CreateFMul(FP(x), FP(y));
